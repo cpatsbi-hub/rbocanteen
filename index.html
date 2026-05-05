@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Office Canteen</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Malayalam:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<style>
+:root{
+  --amber:#c2692a;--green:#2d6a4f;--gold:#e8a020;--cream:#fdf8f2;--white:#fff;
+  --text:#1a1a1a;--muted:#6b7280;--border:#e5e0d8;
+  --shadow:0 4px 24px rgba(0,0,0,.10);--shadow2:0 8px 40px rgba(0,0,0,.18);
+  --radius:20px;--present:#059669;--absent:#dc2626;--star:#f59e0b;
+  --veg:#16a34a;--nonveg:#dc2626;
+  --day-overlay:rgba(12,40,25,.78);
+  --day-accent:#2d6a4f;
+}
+/* ── DAY THEMES ── */
+body[data-day="0"]{--day-overlay:rgba(120,60,10,.75);--day-accent:#b45309} /* Sun - golden */
+body[data-day="1"]{--day-overlay:rgba(12,40,25,.78);--day-accent:#2d6a4f} /* Mon - forest */
+body[data-day="2"]{--day-overlay:rgba(10,40,80,.75);--day-accent:#1d4ed8} /* Tue - ocean */
+body[data-day="3"]{--day-overlay:rgba(10,60,60,.78);--day-accent:#0891b2} /* Wed - teal */
+body[data-day="4"]{--day-overlay:rgba(50,20,80,.78);--day-accent:#7c3aed} /* Thu - purple */
+body[data-day="5"]{--day-overlay:rgba(120,40,10,.72);--day-accent:#c2692a} /* Fri - sunset */
+body[data-day="6"]{--day-overlay:rgba(10,60,30,.75);--day-accent:#059669} /* Sat - tropical */
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'DM Sans',sans-serif;color:var(--text)}
+.ml{font-family:'Noto Sans Malayalam','DM Sans',sans-serif}
+
+#bg{position:fixed;inset:0;z-index:0;background-size:cover;background-position:center;background-repeat:no-repeat;transition:background-image .5s}
+#bg::after{content:'';position:absolute;inset:0;background:linear-gradient(160deg,var(--day-overlay) 0%,rgba(0,0,0,.55) 100%);transition:background .5s}
+#root{position:relative;z-index:10;min-height:100vh;display:flex;flex-direction:column}
+
+/* ── BILL TICKER ── */
+.bill-ticker{background:linear-gradient(90deg,#4f46e5,#7c3aed,#4f46e5);background-size:200%;animation:tickerBg 4s linear infinite;color:#fff;padding:.5rem 1rem;text-align:center;font-size:.8rem;font-weight:600;cursor:pointer;position:relative;overflow:hidden;display:none}
+.bill-ticker.show{display:block}
+.ticker-inner{display:inline-flex;align-items:center;gap:.5rem}
+.ticker-inner i{animation:bellRing .5s ease infinite alternate}
+@keyframes tickerBg{0%{background-position:0%}100%{background-position:200%}}
+@keyframes bellRing{from{transform:rotate(-15deg)}to{transform:rotate(15deg)}}
+
+/* ── AUTH ── */
+#authScreen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem}
+.auth-brand{text-align:center;margin-bottom:1.75rem;color:#fff}
+.auth-brand-icon{width:70px;height:70px;background:linear-gradient(135deg,var(--gold),var(--amber));border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:2rem;color:#fff;box-shadow:0 8px 24px rgba(194,105,42,.4)}
+.auth-brand h1{font-family:'Playfair Display',serif;font-size:1.9rem;letter-spacing:-.01em}
+.auth-brand p{opacity:.75;font-size:.88rem;margin-top:.2rem}
+.auth-card{background:rgba(255,255,255,.97);border-radius:var(--radius);width:100%;max-width:400px;overflow:hidden;box-shadow:var(--shadow2)}
+.auth-tabs{display:flex;border-bottom:2px solid var(--border)}
+.auth-tab{flex:1;padding:.72rem .4rem;text-align:center;font-size:.76rem;font-weight:700;cursor:pointer;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;transition:all .2s;border-bottom:3px solid transparent;margin-bottom:-2px;user-select:none}
+.auth-tab:hover{color:var(--green)}
+.auth-tab.active{color:var(--green);border-bottom-color:var(--green)}
+.auth-panel{padding:1.4rem;display:none}
+.auth-panel.active{display:block;animation:fadeUp .25s ease}
+
+/* FORM FIELDS */
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:.76rem;font-weight:700;color:var(--muted);margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.06em}
+.field input{width:100%;padding:.78rem 1rem;border:2px solid var(--border);border-radius:12px;font-family:'Noto Sans Malayalam','DM Sans',sans-serif;font-size:.93rem;background:var(--cream);transition:all .2s;color:var(--text)}
+.field input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 4px rgba(45,106,79,.12);background:var(--white)}
+.field .hint{font-size:.72rem;color:var(--muted);margin-top:.3rem}
+
+/* DIET PREFERENCE TOGGLE */
+.diet-toggle{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1rem}
+.diet-option{display:flex;flex-direction:column;align-items:center;gap:.3rem;padding:.75rem;border:2px solid var(--border);border-radius:12px;cursor:pointer;transition:all .2s;background:var(--cream);user-select:none}
+.diet-option input{display:none}
+.diet-option .d-icon{font-size:1.5rem}
+.diet-option .d-label{font-size:.8rem;font-weight:700;color:var(--muted)}
+.diet-option.sel-veg{background:linear-gradient(135deg,#d1fae5,#a7f3d0);border-color:var(--veg);color:var(--veg)}
+.diet-option.sel-veg .d-label{color:var(--veg)}
+.diet-option.sel-nonveg{background:linear-gradient(135deg,#fee2e2,#fecaca);border-color:var(--nonveg);color:var(--nonveg)}
+.diet-option.sel-nonveg .d-label{color:var(--nonveg)}
+
+/* PILLS */
+.user-pill{display:flex;align-items:center;gap:.75rem;background:var(--cream);border-radius:13px;padding:.8rem .95rem;border:2px solid var(--border);margin-bottom:1rem}
+.user-pill-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--green),#1a4a32);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.05rem;font-weight:700;flex-shrink:0}
+.user-pill-name{font-weight:700;font-size:.92rem}
+.user-pill-sub{font-size:.71rem;color:var(--muted)}
+.pill-clear{margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:.88rem;padding:.22rem;border-radius:6px;flex-shrink:0;transition:all .2s;line-height:1}
+.pill-clear:hover{background:#fee2e2;color:var(--absent)}
+.auth-switch{text-align:center;font-size:.78rem;color:var(--muted)}
+.auth-switch a{color:var(--green);font-weight:600;cursor:pointer;text-decoration:none}
+.find-intro{text-align:center;margin-bottom:1.1rem;padding:.8rem;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-radius:12px;border:1px solid #bfdbfe}
+.find-intro p{font-size:.82rem;color:#1e40af;line-height:1.55}
+.find-icon{font-size:1.3rem;color:#3b82f6;display:block;margin-bottom:.35rem}
+.btn-ghost{background:transparent;color:var(--green);border:2px solid var(--green)}
+.btn-ghost:hover{background:var(--green);color:#fff}
+.find-result-item{display:flex;align-items:center;justify-content:space-between;gap:.6rem;background:var(--cream);border:2px solid var(--border);border-radius:12px;padding:.75rem .95rem;margin-top:.55rem;animation:fadeUp .2s ease}
+.find-result-name{font-weight:700;font-size:.89rem}
+.find-result-un{font-size:.75rem;color:var(--muted);margin-top:.1rem;font-family:monospace}
+.find-use-btn{background:var(--green);color:#fff;border:none;border-radius:9px;padding:.42rem .85rem;font-size:.79rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s;font-family:'DM Sans',sans-serif;flex-shrink:0}
+.find-use-btn:hover{background:#1a4a32}
+.btn{display:inline-flex;align-items:center;gap:.5rem;justify-content:center;padding:.8rem 1.5rem;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:.93rem;font-weight:700;cursor:pointer;border:none;transition:all .2s;width:100%}
+.btn-green{background:linear-gradient(135deg,var(--green),#1a4a32);color:#fff}
+.btn-green:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(45,106,79,.4)}
+.btn-amber{background:linear-gradient(135deg,var(--amber),#9a4418);color:#fff}
+.btn-amber:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(194,105,42,.4)}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none!important}
+.msg{padding:.65rem 1rem;border-radius:10px;font-size:.82rem;margin-top:.7rem;display:none}
+.msg.error{background:#fee2e2;color:#991b1b;border-left:3px solid var(--absent)}
+.msg.success{background:#d1fae5;color:#065f46;border-left:3px solid var(--present)}
+.msg.show{display:block}
+
+/* ── APP SCREEN ── */
+#appScreen{display:none;flex:1;flex-direction:column}
+.app-header{background:rgba(18,50,30,.9);backdrop-filter:blur(12px);padding:.85rem 1.1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.1)}
+.user-greeting .label{font-size:.65rem;opacity:.55;text-transform:uppercase;letter-spacing:.06em;color:#fff}
+.user-greeting .name{font-family:'Playfair Display',serif;font-size:1.05rem;color:#fff;display:flex;align-items:center;gap:.4rem}
+.diet-badge-hdr{font-size:.65rem;padding:.15rem .4rem;border-radius:20px;font-weight:700}
+.diet-badge-hdr.veg{background:rgba(22,163,74,.3);color:#4ade80}
+.diet-badge-hdr.nonveg{background:rgba(220,38,38,.3);color:#fca5a5}
+.header-actions{display:flex;align-items:center;gap:.5rem}
+.btn-hdr{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2);padding:.38rem .75rem;border-radius:8px;cursor:pointer;font-size:.73rem;font-family:'DM Sans',sans-serif;transition:all .2s;display:flex;align-items:center;gap:.3rem;white-space:nowrap}
+.btn-hdr:hover{background:rgba(255,255,255,.22)}
+.btn-hdr-red{background:rgba(220,38,38,.18);color:#fca5a5;border-color:rgba(220,38,38,.3)}
+.btn-hdr-red:hover{background:rgba(220,38,38,.4);color:#fff}
+.btn-hdr-bill{background:rgba(99,102,241,.3);color:#c7d2fe;border-color:rgba(99,102,241,.4)}
+.btn-hdr-bill:hover{background:rgba(99,102,241,.5);color:#fff}
+
+.app-body{flex:1;padding:1rem;max-width:520px;margin:0 auto;width:100%;padding-bottom:5rem}
+.date-strip{text-align:center;color:rgba(255,255,255,.85);font-size:.8rem;margin-bottom:1.1rem;display:flex;align-items:center;justify-content:center;gap:.5rem}
+.date-strip .dot{width:6px;height:6px;background:var(--gold);border-radius:50%}
+
+/* ── VEGAN DAY BANNER ── */
+.vegan-banner{background:linear-gradient(135deg,#14532d,#166534);border-radius:14px;padding:.9rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:.7rem;animation:fadeUp .3s ease}
+.vegan-banner-icon{font-size:1.8rem;flex-shrink:0}
+.vegan-banner h3{font-family:'Playfair Display',serif;font-size:1rem;color:#4ade80;margin-bottom:.1rem}
+.vegan-banner p{font-size:.78rem;color:rgba(255,255,255,.75);margin:0}
+
+/* VEG/NONVEG BADGE */
+.veg-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--veg);border:1.5px solid rgba(255,255,255,.5);flex-shrink:0}
+.nonveg-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--nonveg);border:1.5px solid rgba(255,255,255,.5);flex-shrink:0}
+.item-veg-badge{font-size:.66rem;font-weight:700;padding:.1rem .35rem;border-radius:4px;flex-shrink:0}
+.item-veg-badge.veg{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7}
+.item-veg-badge.nonveg{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+
+/* ── MENU CARD ── */
+.menu-card{background:var(--white);border-radius:22px;overflow:hidden;box-shadow:var(--shadow2);margin-bottom:1rem;animation:fadeUp .4s ease}
+.menu-hero{width:100%;height:190px;object-fit:cover;display:block}
+.menu-hero-placeholder{width:100%;height:150px;background:linear-gradient(135deg,#e8f4ea,#d0e8d8);display:flex;align-items:center;justify-content:center;font-size:4rem}
+.menu-card-body{padding:1.2rem}
+.menu-label{font-size:.7rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.3rem;display:flex;align-items:center;gap:.35rem}
+.menu-name{font-family:'Noto Sans Malayalam','Playfair Display',serif;font-size:1.4rem;color:var(--green);line-height:1.3;display:flex;align-items:center;gap:.5rem}
+.menu-divider{height:1px;background:var(--border);margin:1rem 0}
+.sides-label{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.55rem}
+.side-dish-item{display:flex;align-items:center;gap:.65rem;background:var(--cream);border-radius:11px;padding:.55rem .75rem;margin-bottom:.45rem;border:1px solid var(--border)}
+.side-dish-img{width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;border:2px solid var(--white)}
+.side-dish-img-placeholder{width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,#d0e8d8,#b8d8c0);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+.side-dish-name{font-size:.88rem;font-weight:600;color:var(--text);font-family:'Noto Sans Malayalam','DM Sans',sans-serif;flex:1}
+
+/* ── ATTENDANCE ── */
+.att-question{font-size:.88rem;font-weight:600;color:var(--text);margin-bottom:.85rem;display:flex;align-items:center;gap:.4rem}
+.att-question i{color:var(--amber)}
+.att-buttons{display:grid;gap:.6rem}
+.att-buttons.two-col{grid-template-columns:1fr 1fr}
+.att-buttons.three-col{grid-template-columns:1fr 1fr 1fr}
+.att-btn{padding:.9rem .5rem;border-radius:13px;cursor:pointer;border:2px solid var(--border);font-family:'DM Sans',sans-serif;font-weight:700;font-size:.88rem;display:flex;flex-direction:column;align-items:center;gap:.3rem;transition:all .25s;background:var(--cream);-webkit-tap-highlight-color:transparent}
+.att-btn .att-icon{font-size:1.5rem}
+.att-btn .att-label{font-size:.72rem;font-weight:600}
+.att-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:var(--shadow)}
+.att-btn-present:hover:not(:disabled){background:#d1fae5;border-color:var(--present);color:var(--present)}
+.att-btn-veg:hover:not(:disabled){background:#d1fae5;border-color:var(--veg);color:var(--veg)}
+.att-btn-nonveg:hover:not(:disabled){background:#fee2e2;border-color:var(--nonveg);color:var(--nonveg)}
+.att-btn-absent:hover:not(:disabled){background:#fee2e2;border-color:var(--absent);color:var(--absent)}
+.att-btn:disabled{opacity:.5;cursor:not-allowed}
+.att-marked{border-radius:16px;padding:1.1rem;text-align:center;animation:fadeUp .3s ease}
+.att-marked.present.veg{background:linear-gradient(135deg,#d1fae5,#a7f3d0);border:2px solid #6ee7b7}
+.att-marked.present.nonveg{background:linear-gradient(135deg,#fee2e2,#fecaca);border:2px solid #fca5a5}
+.att-marked.absent{background:linear-gradient(135deg,#f1f5f9,#e2e8f0);border:2px solid #cbd5e1}
+.att-marked .marked-icon{font-size:2rem;margin-bottom:.35rem;display:block}
+.att-marked .marked-title{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700}
+.att-marked .marked-sub{font-size:.78rem;margin-top:.2rem;opacity:.75}
+.meal-type-tag{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .65rem;border-radius:20px;font-size:.72rem;font-weight:700;margin-top:.4rem}
+.meal-type-tag.veg{background:rgba(22,163,74,.15);color:var(--veg)}
+.meal-type-tag.nonveg{background:rgba(220,38,38,.15);color:var(--nonveg)}
+
+/* ── RATING ── */
+.rating-card{background:var(--white);border-radius:18px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:1rem}
+.rating-card-header{background:linear-gradient(135deg,var(--green),#1a4a32);color:#fff;padding:.85rem 1.1rem;display:flex;align-items:center;gap:.55rem}
+.rating-card-header i{font-size:.9rem;color:var(--gold)}
+.rating-card-header h3{font-family:'Playfair Display',serif;font-size:.95rem}
+.rating-item{padding:.9rem 1.1rem;border-bottom:1px solid var(--border)}
+.rating-item:last-child{border-bottom:none}
+.rating-item-name{font-weight:700;font-size:.9rem;color:var(--text);margin-bottom:.45rem;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;font-family:'Noto Sans Malayalam','DM Sans',sans-serif}
+.rating-item-type-badge{font-size:.65rem;background:rgba(45,106,79,.1);color:var(--green);border-radius:20px;padding:.1rem .4rem;font-weight:600;font-family:'DM Sans',sans-serif}
+.star-row{display:flex;align-items:center;gap:.3rem;margin-bottom:.45rem}
+.star{font-size:1.55rem;cursor:pointer;color:#d1d5db;transition:color .15s,transform .1s;user-select:none;line-height:1;-webkit-tap-highlight-color:transparent}
+.star.active{color:var(--star)}
+.star:hover{transform:scale(1.15)}
+.rating-comment{width:100%;padding:.5rem .8rem;border:2px solid var(--border);border-radius:10px;font-family:'Noto Sans Malayalam','DM Sans',sans-serif;font-size:.85rem;resize:vertical;min-height:56px;background:var(--cream);transition:border .2s}
+.rating-comment:focus{outline:none;border-color:var(--green);background:var(--white)}
+.comment-hint{font-size:.68rem;color:var(--muted);margin-top:.18rem}
+.rated-badge{display:inline-flex;align-items:center;gap:.3rem;background:#d1fae5;color:#065f46;border-radius:20px;padding:.2rem .7rem;font-size:.76rem;font-weight:700;margin-bottom:.35rem}
+.rating-submit-row{padding:.8rem 1.1rem;background:var(--cream);display:flex;justify-content:flex-end}
+.btn-submit-rating{background:linear-gradient(135deg,var(--amber),#9a4418);color:#fff;border:none;padding:.55rem 1.3rem;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.4rem}
+.btn-submit-rating:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(194,105,42,.4)}
+.btn-submit-rating:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* ── SUGGESTIONS ── */
+.sug-card{background:var(--white);border-radius:18px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:1rem}
+.sug-card-header{background:linear-gradient(135deg,#4f46e5,#3730a3);color:#fff;padding:.85rem 1.1rem;display:flex;align-items:center;justify-content:space-between}
+.sug-card-header h3{font-family:'Playfair Display',serif;font-size:.95rem;display:flex;align-items:center;gap:.45rem}
+.sug-add-row{display:flex;gap:.45rem;padding:.9rem 1.1rem;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.sug-add-row input{flex:1;min-width:110px;padding:.55rem .8rem;border:2px solid var(--border);border-radius:10px;font-family:'Noto Sans Malayalam','DM Sans',sans-serif;font-size:.88rem;background:var(--cream);color:var(--text);transition:border .2s}
+.sug-add-row input:focus{outline:none;border-color:#4f46e5;background:var(--white)}
+.sug-add-row select{padding:.55rem .65rem;border:2px solid var(--border);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.84rem;background:var(--cream);color:var(--text);cursor:pointer}
+.sug-add-btn{background:linear-gradient(135deg,#4f46e5,#3730a3);color:#fff;border:none;border-radius:10px;padding:.55rem .95rem;font-family:'DM Sans',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s;display:flex;align-items:center;gap:.35rem}
+.sug-add-btn:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(79,70,229,.4)}
+.sug-add-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.sug-list{padding:.35rem 0}
+.sug-item{display:flex;align-items:center;gap:.65rem;padding:.65rem 1.1rem;border-bottom:1px solid var(--border);transition:background .15s}
+.sug-item:last-child{border-bottom:none}
+.sug-item:hover{background:var(--cream)}
+.sug-type-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sug-type-main{background:#4f46e5}
+.sug-type-side{background:#f59e0b}
+.sug-info{flex:1;min-width:0}
+.sug-name{font-weight:700;font-size:.88rem;color:var(--text);font-family:'Noto Sans Malayalam','DM Sans',sans-serif}
+.sug-meta{font-size:.69rem;color:var(--muted);margin-top:.08rem}
+.sug-vote-row{display:flex;align-items:center;gap:.3rem;flex-shrink:0}
+.vote-btn{width:32px;height:32px;border-radius:9px;border:2px solid var(--border);background:var(--cream);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.82rem;transition:all .2s;flex-shrink:0}
+.vote-btn:hover{transform:scale(1.08)}
+.vote-btn.voted-up{background:#d1fae5;border-color:var(--present);color:var(--present)}
+.vote-btn.voted-down{background:#fee2e2;border-color:var(--absent);color:var(--absent)}
+.vote-count{font-size:.75rem;font-weight:700;color:var(--muted);min-width:14px;text-align:center}
+.sug-net{font-size:.7rem;font-weight:700;padding:.1rem .38rem;border-radius:20px}
+.sug-net-pos{background:#d1fae5;color:#065f46}
+.sug-net-neg{background:#fee2e2;color:#991b1b}
+.sug-net-zero{background:var(--cream);color:var(--muted);border:1px solid var(--border)}
+.sug-empty{text-align:center;padding:1.4rem;color:var(--muted);font-size:.84rem}
+
+/* ── HISTORY ── */
+.history-panel{background:rgba(255,255,255,.95);border-radius:18px;overflow:hidden;box-shadow:var(--shadow);margin-top:.8rem;animation:fadeUp .3s ease}
+.history-header{background:var(--cream);padding:.8rem 1rem;border-bottom:1px solid var(--border);font-weight:700;font-size:.86rem;color:var(--text);display:flex;align-items:center;gap:.4rem}
+.history-item{display:flex;align-items:center;justify-content:space-between;padding:.58rem 1rem;border-bottom:1px solid var(--border)}
+.history-item:last-child{border-bottom:none}
+.hi-date{font-weight:700;font-size:.84rem}
+.hi-day{font-size:.7rem;color:var(--muted)}
+.badge{display:inline-flex;align-items:center;gap:.22rem;padding:.18rem .55rem;border-radius:20px;font-size:.7rem;font-weight:700}
+.badge-present-veg{background:#d1fae5;color:#065f46}
+.badge-present-nonveg{background:#fee2e2;color:#991b1b}
+.badge-absent{background:#f1f5f9;color:#64748b}
+
+/* ── BILL VIEW ── */
+.bill-panel{background:rgba(255,255,255,.95);border-radius:18px;overflow:hidden;box-shadow:var(--shadow);margin-top:.8rem;animation:fadeUp .3s ease}
+.bill-panel-header{background:linear-gradient(135deg,#4f46e5,#3730a3);color:#fff;padding:.85rem 1.1rem;display:flex;align-items:center;gap:.5rem}
+.bill-panel-header h3{font-family:'Playfair Display',serif;font-size:.95rem}
+.bill-card{background:var(--cream);border-radius:12px;margin:.85rem;padding:1rem;border:1.5px solid var(--border)}
+.bill-card.bill-new{border-color:#818cf8;background:linear-gradient(135deg,#eef2ff,#e0e7ff)}
+.bill-period{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem}
+.bill-amount{font-family:'Playfair Display',serif;font-size:1.8rem;color:#4f46e5;font-weight:700;margin-bottom:.4rem}
+.bill-breakdown{display:grid;grid-template-columns:1fr 1fr;gap:.3rem;font-size:.76rem;color:var(--muted)}
+.bill-row{display:flex;justify-content:space-between;align-items:center}
+.new-bill-tag{background:#818cf8;color:#fff;border-radius:20px;padding:.12rem .55rem;font-size:.68rem;font-weight:700;display:inline-flex;align-items:center;gap:.2rem;margin-bottom:.4rem}
+
+/* NO MENU / LOADING */
+.no-menu-card{background:rgba(255,255,255,.92);border-radius:22px;padding:2.5rem;text-align:center;box-shadow:var(--shadow2)}
+.nm-icon{font-size:3.5rem;display:block;margin-bottom:1rem}
+.no-menu-card h2{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--green);margin-bottom:.5rem}
+.no-menu-card p{color:var(--muted);font-size:.88rem}
+.loading-card{background:rgba(255,255,255,.85);border-radius:22px;padding:2.5rem;text-align:center;box-shadow:var(--shadow2)}
+.spinner{width:28px;height:28px;border:3px solid rgba(45,106,79,.18);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(100px);background:#1a1a1a;color:#fff;padding:.65rem 1.3rem;border-radius:30px;font-size:.83rem;font-weight:500;z-index:9999;transition:transform .3s,opacity .3s;opacity:0;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.success{background:var(--present)}
+.toast.error{background:var(--absent)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:360px){
+  .att-buttons.three-col{grid-template-columns:1fr;gap:.45rem}
+  .att-btn{flex-direction:row;justify-content:center;padding:.75rem}
+}
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<div id="root">
+
+  <!-- BILL TICKER -->
+  <div class="bill-ticker" id="billTicker" onclick="openBillView()">
+    <span class="ticker-inner"><i class="fa-solid fa-bell"></i> Your new bill is ready! Tap to view</span>
+  </div>
+
+  <!-- ═══ AUTH SCREEN ═══ -->
+  <div id="authScreen">
+    <div class="auth-brand">
+      <div class="auth-brand-icon"><i class="fa-solid fa-utensils"></i></div>
+      <h1>Office Canteen</h1>
+      <p>Mark attendance &amp; rate your meal</p>
+    </div>
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="atab-login"    onclick="switchTab('login')">Sign In</div>
+        <div class="auth-tab"        id="atab-register" onclick="switchTab('register')">Register</div>
+        <div class="auth-tab"        id="atab-find"     onclick="switchTab('find')">Forgot?</div>
+      </div>
+
+      <!-- LOGIN -->
+      <div class="auth-panel active" id="apanel-login">
+        <div id="returningPill" style="display:none">
+          <div class="user-pill" id="userPill">
+            <div class="user-pill-avatar" id="pillAvatar">?</div>
+            <div>
+              <div class="user-pill-name ml" id="pillName">—</div>
+              <div class="user-pill-sub" id="pillUsername">—</div>
+            </div>
+            <button class="pill-clear" onclick="clearSaved()"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <button class="btn btn-green" id="quickSignInBtn" onclick="doQuickLogin()">
+            <i class="fa-solid fa-right-to-bracket"></i> Sign In
+          </button>
+          <div id="quickLoginMsg" class="msg"></div>
+          <div class="auth-switch" style="margin-top:.9rem">Different account? <a onclick="clearSaved()">Use username</a></div>
+        </div>
+        <div id="manualLoginForm">
+          <div class="field">
+            <label>Username</label>
+            <input type="text" id="l-username" placeholder="your.username" autocomplete="username" autocapitalize="none" spellcheck="false" onkeydown="if(event.key==='Enter')doLogin()">
+          </div>
+          <button class="btn btn-green" id="loginBtn" onclick="doLogin()">
+            <i class="fa-solid fa-right-to-bracket"></i> Sign In
+          </button>
+          <div id="loginMsg" class="msg"></div>
+          <div class="auth-switch" style="margin-top:.9rem">Don't know your username? <a onclick="switchTab('find')">Find it →</a></div>
+        </div>
+      </div>
+
+      <!-- REGISTER -->
+      <div class="auth-panel" id="apanel-register">
+        <div class="field">
+          <label>Your Full Name</label>
+          <input type="text" id="r-name" placeholder="e.g. Rahul Sharma" autocomplete="name" class="ml" oninput="autoCapitalize(this)" onkeydown="if(event.key==='Enter')document.getElementById('r-username').focus()">
+        </div>
+        <div class="field">
+          <label>Choose a Username</label>
+          <input type="text" id="r-username" placeholder="e.g. rahul.sharma" autocomplete="username" autocapitalize="none" spellcheck="false" onkeydown="if(event.key==='Enter')doRegister()">
+          <div class="hint">Letters, numbers, dot, underscore only. <strong>Remember this!</strong></div>
+        </div>
+        <div class="field">
+          <label>I prefer to eat…</label>
+          <div class="diet-toggle">
+            <label class="diet-option sel-veg" id="dopt-veg" onclick="setDietPref('veg')">
+              <span class="d-icon">🥦</span>
+              <span class="d-label">Vegetarian</span>
+            </label>
+            <label class="diet-option" id="dopt-nonveg" onclick="setDietPref('nonveg')">
+              <span class="d-icon">🍗</span>
+              <span class="d-label">Non-Vegetarian</span>
+            </label>
+          </div>
+        </div>
+        <button class="btn btn-amber" id="regBtn" onclick="doRegister()">
+          <i class="fa-solid fa-user-plus"></i> Create Account
+        </button>
+        <div id="regMsg" class="msg"></div>
+        <div class="auth-switch" style="margin-top:.9rem">Already registered? <a onclick="switchTab('login')">Sign in</a></div>
+      </div>
+
+      <!-- FORGOT USERNAME -->
+      <div class="auth-panel" id="apanel-find">
+        <div class="find-intro">
+          <i class="fa-solid fa-magnifying-glass find-icon"></i>
+          <p>Enter your name and we'll find your username.</p>
+        </div>
+        <div class="field">
+          <label>Your Full Name</label>
+          <input type="text" id="f-name" placeholder="e.g. Rahul Sharma" class="ml" autocomplete="name" onkeydown="if(event.key==='Enter')doFind()">
+        </div>
+        <button class="btn btn-ghost" id="findBtn" onclick="doFind()">
+          <i class="fa-solid fa-magnifying-glass"></i> Find My Username
+        </button>
+        <div id="findMsg" class="msg"></div>
+        <div id="findResults"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ APP SCREEN ═══ -->
+  <div id="appScreen">
+    <div class="app-header">
+      <div class="user-greeting">
+        <div class="label">Signed in as</div>
+        <div class="name ml" id="userName">—
+          <span class="diet-badge-hdr" id="dietBadge"></span>
+        </div>
+        <div style="font-size:.68rem;color:rgba(255,255,255,.45);margin-top:.05rem" id="userUsername"></div>
+      </div>
+      <div class="header-actions">
+        <button class="btn-hdr btn-hdr-bill" onclick="openBillView()"><i class="fa-solid fa-file-invoice"></i></button>
+        <button class="btn-hdr" onclick="toggleHistory()"><i class="fa-solid fa-clock-rotate-left"></i></button>
+        <button class="btn-hdr btn-hdr-red" onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </div>
+
+    <div class="app-body">
+      <div class="date-strip">
+        <span class="dot"></span>
+        <span id="dateStrip">—</span>
+        <span class="dot"></span>
+      </div>
+      <div id="mainContent"></div>
+      <div id="ratingSection"></div>
+      <div id="suggestionSection"></div>
+      <div id="historyPanel" style="display:none"></div>
+      <div id="billPanel" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_URL='https://script.google.com/macros/s/AKfycbz7aBuVK1x2Y2xNDYEBcM2xoXJJxNoOfMkwGYRfsh5cJtP4j3fKqb2oOmDzO1SIz17s/exec';
+
+// Day-based backgrounds
+const DAY_BG=[
+  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&q=80', // Sun - golden peaks
+  'https://images.unsplash.com/photo-1448375240586-882707db888b?w=1920&q=80', // Mon - forest
+  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80', // Tue - beach
+  'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1920&q=80', // Wed - lake
+  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80', // Thu - purple mountains
+  'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=1920&q=80', // Fri - sunset
+  'https://images.unsplash.com/photo-1455156218388-5e61b526818b?w=1920&q=80'  // Sat - tropical
+];
+
+let userToken='',userData=null,historyOpen=false,billOpen=false,
+    currentMenu=null,userRatings={},pendingRatings={},todayStatus=null,
+    regDietPref='veg';
+
+function api(params){
+  return new Promise((resolve,reject)=>{
+    const cb='cb_'+Date.now()+'_'+Math.floor(Math.random()*9999);
+    const qs=Object.entries({...params,callback:cb}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const s=document.createElement('script');
+    const t=setTimeout(()=>{cleanup();reject(new Error('Timeout'));},15000);
+    window[cb]=d=>{cleanup();resolve(d);};
+    function cleanup(){clearTimeout(t);delete window[cb];s.remove();}
+    s.onerror=()=>{cleanup();reject(new Error('Network error'));};
+    s.src=API_URL+'?'+qs; document.head.appendChild(s);
+  });
+}
+
+function autoCapitalize(inp){
+  const pos=inp.selectionStart;
+  inp.value=inp.value.replace(/\b\w/g,c=>c.toUpperCase());
+  try{inp.setSelectionRange(pos,pos);}catch(e){}
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escA(s){return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
+function showMsg(id,t,type){const el=document.getElementById(id);if(!el)return;el.textContent=t;el.className='msg '+(type||'')+' show';}
+let tT;
+function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='toast show'+(type?' '+type:'');clearTimeout(tT);tT=setTimeout(()=>el.className='toast',3200);}
+
+function setDietPref(pref){
+  regDietPref=pref;
+  document.getElementById('dopt-veg').className='diet-option'+(pref==='veg'?' sel-veg':'');
+  document.getElementById('dopt-nonveg').className='diet-option'+(pref==='nonveg'?' sel-nonveg':'');
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  const dow=new Date().getDay();
+  document.body.setAttribute('data-day',dow);
+  document.getElementById('bg').style.backgroundImage=`url('${DAY_BG[dow]}')`;
+  document.getElementById('dateStrip').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  userToken=localStorage.getItem('userToken')||'';
+  userData=JSON.parse(localStorage.getItem('userData')||'null');
+  const su=localStorage.getItem('savedUsername')||'';
+  const sn=localStorage.getItem('savedName')||'';
+  if(userToken&&userData){showApp(userData);return;}
+  switchTab('login');
+  if(su&&sn){
+    document.getElementById('returningPill').style.display='block';
+    document.getElementById('manualLoginForm').style.display='none';
+    document.getElementById('pillName').textContent=sn;
+    document.getElementById('pillUsername').textContent='@'+su;
+    document.getElementById('pillAvatar').textContent=(sn[0]||'?').toUpperCase();
+  } else {
+    document.getElementById('returningPill').style.display='none';
+    document.getElementById('manualLoginForm').style.display='block';
+  }
+});
+
+function switchTab(name){
+  document.querySelectorAll('.auth-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.auth-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('atab-'+name).classList.add('active');
+  document.getElementById('apanel-'+name).classList.add('active');
+}
+function clearSaved(){
+  document.getElementById('returningPill').style.display='none';
+  document.getElementById('manualLoginForm').style.display='block';
+  document.getElementById('l-username').focus();
+}
+
+async function doQuickLogin(){
+  const su=localStorage.getItem('savedUsername')||''; if(!su){clearSaved();return;}
+  const btn=document.getElementById('quickSignInBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner" style="width:16px;height:16px;border-width:2px"></span> Signing in…';
+  try{const res=await api({action:'login',username:su}); if(res.success){saveSession(res);showApp(res);}else showMsg('quickLoginMsg',res.message,'error');}
+  catch(e){showMsg('quickLoginMsg','Connection error. Try again.','error');}
+  btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-right-to-bracket"></i> Sign In';
+}
+
+async function doLogin(){
+  const uname=document.getElementById('l-username').value.trim().toLowerCase();
+  if(!uname){showMsg('loginMsg','Please enter your username','error');return;}
+  const btn=document.getElementById('loginBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner" style="width:16px;height:16px;border-width:2px"></span> Signing in…';
+  try{const res=await api({action:'login',username:uname}); if(res.success){saveSession(res);showApp(res);}else showMsg('loginMsg',res.message,'error');}
+  catch(e){showMsg('loginMsg','Connection error. Try again.','error');}
+  btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-right-to-bracket"></i> Sign In';
+}
+
+async function doRegister(){
+  const name=document.getElementById('r-name').value.trim();
+  const uname=document.getElementById('r-username').value.trim().toLowerCase().replace(/\s+/g,'');
+  if(!name){showMsg('regMsg','Please enter your full name','error');return;}
+  if(!uname){showMsg('regMsg','Please choose a username','error');return;}
+  if(!/^[a-z0-9._]+$/.test(uname)){showMsg('regMsg','Username: only letters, numbers, dot, underscore','error');return;}
+  const btn=document.getElementById('regBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner" style="width:16px;height:16px;border-width:2px"></span> Creating…';
+  try{
+    const res=await api({action:'register',name,username:uname,dietPref:regDietPref});
+    if(res.success){saveSession(res);showApp(res);toast('Welcome, '+res.name+'! 🎉','success');}
+    else showMsg('regMsg',res.message,'error');
+  }catch(e){showMsg('regMsg','Connection error. Try again.','error');}
+  btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-user-plus"></i> Create Account';
+}
+
+async function doFind(){
+  const name=document.getElementById('f-name').value.trim();
+  if(name.length<2){showMsg('findMsg','Enter at least 2 characters of your name','error');return;}
+  const btn=document.getElementById('findBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner" style="width:16px;height:16px;border-width:2px"></span> Searching…';
+  document.getElementById('findResults').innerHTML='';
+  try{
+    const res=await api({action:'findUsername',name});
+    if(res.success&&res.matches&&res.matches.length){
+      showMsg('findMsg','','');
+      document.getElementById('findResults').innerHTML=res.matches.map(m=>`
+        <div class="find-result-item">
+          <div><div class="find-result-name ml">${esc(m.name)}</div><div class="find-result-un">@${esc(m.username)}</div></div>
+          <button class="find-use-btn" onclick="useFoundUsername('${escA(m.username)}','${escA(m.name)}')">Sign In →</button>
+        </div>`).join('');
+    }else showMsg('findMsg',res.message||'No account found with that name','error');
+  }catch(e){showMsg('findMsg','Connection error. Try again.','error');}
+  btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-magnifying-glass"></i> Find My Username';
+}
+
+async function useFoundUsername(username,name){
+  toast('Signing in as '+name+'…');
+  try{const res=await api({action:'login',username}); if(res.success){saveSession(res);showApp(res);}else toast(res.message,'error');}
+  catch(e){toast('Connection error','error');}
+}
+
+function saveSession(res){
+  userToken=res.token; userData={name:res.name,username:res.username,dietPref:res.dietPref||'veg'};
+  localStorage.setItem('userToken',userToken);
+  localStorage.setItem('userData',JSON.stringify(userData));
+  localStorage.setItem('savedUsername',res.username);
+  localStorage.setItem('savedName',res.name);
+}
+
+function doLogout(){
+  userToken='';userData=null;todayStatus=null;
+  localStorage.removeItem('userToken');localStorage.removeItem('userData');
+  document.getElementById('authScreen').style.display='flex';
+  document.getElementById('appScreen').style.display='none';
+  document.getElementById('billTicker').className='bill-ticker';
+  const su=localStorage.getItem('savedUsername')||'';
+  const sn=localStorage.getItem('savedName')||'';
+  switchTab('login');
+  if(su&&sn){
+    document.getElementById('returningPill').style.display='block';
+    document.getElementById('manualLoginForm').style.display='none';
+    document.getElementById('pillName').textContent=sn;
+    document.getElementById('pillUsername').textContent='@'+su;
+    document.getElementById('pillAvatar').textContent=(sn[0]||'?').toUpperCase();
+  } else {
+    document.getElementById('returningPill').style.display='none';
+    document.getElementById('manualLoginForm').style.display='block';
+  }
+}
+
+function showApp(user){
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('appScreen').style.display='flex';
+  document.getElementById('userName').childNodes[0].nodeValue=user.name+' ';
+  document.getElementById('userUsername').textContent='@'+user.username;
+  const dp=user.dietPref||userData?.dietPref||'veg';
+  const badge=document.getElementById('dietBadge');
+  badge.className='diet-badge-hdr '+(dp==='nonveg'?'nonveg':'veg');
+  badge.textContent=dp==='nonveg'?'🍗 Non-Veg':'🥦 Veg';
+  loadMenuAndAttendance();
+  checkUserBills();
+}
+
+async function loadMenuAndAttendance(){
+  document.getElementById('mainContent').innerHTML=`<div class="loading-card"><span class="spinner" style="width:36px;height:36px;border-width:3px;display:block;margin:0 auto 1rem"></span><p style="color:var(--muted);font-size:.88rem">Loading today's menu…</p></div>`;
+  document.getElementById('ratingSection').innerHTML='';
+  try{
+    const [menuRes,attRes,ratRes]=await Promise.all([
+      api({action:'getMenu'}),api({action:'checkAttendance',token:userToken}),api({action:'getMyRatings',token:userToken})
+    ]);
+    if(attRes.message?.includes('session')){doLogout();return;}
+    currentMenu=menuRes.menu; userRatings=ratRes.ratings||{}; pendingRatings={};
+    todayStatus=attRes.marked?{status:attRes.status,mealType:attRes.mealType}:null;
+    if(!currentMenu){
+      document.getElementById('mainContent').innerHTML=`<div class="no-menu-card"><span class="nm-icon">🍽️</span><h2>Menu Not Set Yet</h2><p>Today's menu hasn't been announced. Check back later!</p></div>`;
+      return;
+    }
+    renderMenuCard(currentMenu,attRes);
+    if(!attRes.marked||(attRes.status==='present')) renderRatingSection(currentMenu);
+    loadSuggestions();
+  }catch(e){
+    document.getElementById('mainContent').innerHTML=`<div class="no-menu-card"><span class="nm-icon">⚠️</span><h2>Connection Error</h2><p><a href="#" onclick="loadMenuAndAttendance()" style="color:var(--amber)">Try again</a></p></div>`;
+  }
+}
+
+function renderMenuCard(menu,attRes){
+  // Pure veg banner
+  const veganBanner=menu.isPureVeg?`<div class="vegan-banner"><span class="vegan-banner-icon">🌿</span><div><h3>Pure Veg Day!</h3><p>Let's go vegan today!!</p></div></div>`:'';
+  const heroHtml=menu.mainCourseImg?`<img src="${esc(menu.mainCourseImg)}" class="menu-hero" loading="eager" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:'' ;
+  const heroPlaceholder=!menu.mainCourseImg?`<div class="menu-hero-placeholder">🍱</div>`:`<div class="menu-hero-placeholder" style="display:none">🍱</div>`;
+  const vegBadge=v=>`<span class="item-veg-badge ${v?'veg':'nonveg'}">${v?'🟢 Veg':'🔴 Non-Veg'}</span>`;
+  const sidesHtml=(menu.sideDishes||[]).length?`<div class="sides-section"><div class="sides-label"><i class="fa-solid fa-leaf" style="color:var(--green);font-size:.72rem"></i> Side Dishes</div>${menu.sideDishes.map(s=>{const sI=s.imgUrl?`<img src="${esc(s.imgUrl)}" class="side-dish-img" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="side-dish-img-placeholder" style="display:none">🥗</div>`:`<div class="side-dish-img-placeholder">🥗</div>`;return`<div class="side-dish-item">${sI}<div class="side-dish-name">${esc(s.name||'')}</div>${vegBadge(s.isVeg!==false)}</div>`;}).join('')}</div>`:'';
+  const attHtml=attRes.marked?buildMarkedHtml(attRes.status,attRes.mealType):buildAttButtons(menu.isPureVeg);
+  document.getElementById('mainContent').innerHTML=`
+    ${veganBanner}
+    <div class="menu-card">${heroHtml}${heroPlaceholder}
+      <div class="menu-card-body">
+        <div class="menu-label"><i class="fa-solid fa-star"></i> Today's Main Course</div>
+        <div class="menu-name">${esc(menu.mainCourse)} ${vegBadge(menu.mainCourseIsVeg!==false)}</div>
+        ${sidesHtml}
+        <div class="menu-divider"></div>
+        <div id="attendanceSection">${attHtml}</div>
+      </div>
+    </div>`;
+}
+
+function buildAttButtons(isPureVeg){
+  if(isPureVeg){
+    return `<div class="att-question"><i class="fa-solid fa-circle-question"></i> Will you have lunch today? <span style="font-size:.75rem;background:rgba(22,163,74,.15);color:var(--veg);border-radius:20px;padding:.12rem .5rem;font-weight:700">🌿 Pure Veg Day</span></div>
+    <div class="att-buttons two-col">
+      <button class="att-btn att-btn-present" onclick="markAtt('present','veg')"><span class="att-icon">✅</span><span class="att-label">Yes, I'll eat!</span></button>
+      <button class="att-btn att-btn-absent" onclick="markAtt('absent','veg')"><span class="att-icon">🚫</span><span class="att-label">Skip today</span></button>
+    </div>`;
+  }
+  return `<div class="att-question"><i class="fa-solid fa-circle-question"></i> What will you have today?</div>
+  <div class="att-buttons three-col">
+    <button class="att-btn att-btn-veg" onclick="markAtt('present','veg')"><span class="att-icon">🥦</span><span class="att-label">Veg Food</span></button>
+    <button class="att-btn att-btn-nonveg" onclick="markAtt('present','nonveg')"><span class="att-icon">🍗</span><span class="att-label">Non-Veg</span></button>
+    <button class="att-btn att-btn-absent" onclick="markAtt('absent','veg')"><span class="att-icon">🚫</span><span class="att-label">Skip</span></button>
+  </div>`;
+}
+
+function buildMarkedHtml(status,mealType){
+  const p=status==='present';
+  const mt=mealType||'veg';
+  const isVeg=mt==='veg';
+  const icon=p?(isVeg?'🥦':'🍗'):'🚫';
+  const title=p?(isVeg?'Having Veg Today!':'Having Non-Veg Today!'):'Skipping Today';
+  const sub=p?(isVeg?'Veg meal confirmed. Enjoy! 🌿':'Non-veg meal confirmed. Enjoy! 🍗'):'Marked absent for today.';
+  const mealTag=p?`<div class="meal-type-tag ${mt}"><i class="fa-solid fa-${isVeg?'leaf':'drumstick-bite'}"></i> ${isVeg?'Vegetarian':'Non-Vegetarian'}</div>`:'';
+  const changeBtn=!p?`<button onclick="markAtt('present','veg')" style="margin-top:.75rem;background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;border-radius:11px;padding:.6rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.83rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem"><i class="fa-solid fa-circle-check"></i> Changed mind — I'll eat (Veg)</button>
+    <button onclick="markAtt('present','nonveg')" style="margin-top:.5rem;background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;border:none;border-radius:11px;padding:.6rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.83rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem"><i class="fa-solid fa-drumstick-bite"></i> Changed mind — Non-Veg</button>`
+    :`<div style="margin-top:.5rem;font-size:.7rem;opacity:.5;display:flex;align-items:center;gap:.3rem;justify-content:center"><i class="fa-solid fa-lock"></i> Attendance locked</div>`;
+  return`<div class="att-marked ${status} ${mt}" style="display:flex;flex-direction:column;align-items:center">
+    <span class="marked-icon">${icon}</span>
+    <div class="marked-title">${title}</div>
+    <div class="marked-sub">${sub}</div>
+    ${mealTag}${changeBtn}
+  </div>`;
+}
+
+async function markAtt(status,mealType){
+  document.querySelectorAll('.att-btn,.att-marked button').forEach(b=>b.disabled=true);
+  try{
+    const res=await api({action:'markAttendance',token:userToken,status,mealType});
+    if(res.success){
+      todayStatus={status:res.status,mealType:res.mealType};
+      document.getElementById('attendanceSection').innerHTML=buildMarkedHtml(res.status,res.mealType);
+      toast(res.message,'success');
+      if(res.status==='absent') document.getElementById('ratingSection').innerHTML='';
+      else if(res.status==='present'&&currentMenu) renderRatingSection(currentMenu);
+      loadSuggestions();
+    }else if(res.alreadyMarked){
+      todayStatus={status:res.status,mealType:res.mealType||'veg'};
+      document.getElementById('attendanceSection').innerHTML=buildMarkedHtml(res.status,res.mealType);
+      if(res.locked) toast(res.message,'error');
+    }else if(res.message?.includes('session')){doLogout();}
+    else{toast(res.message||'Error','error');document.querySelectorAll('.att-btn').forEach(b=>b.disabled=false);}
+  }catch(e){toast('Network error. Try again.','error');document.querySelectorAll('.att-btn').forEach(b=>b.disabled=false);}
+}
+
+function renderRatingSection(menu){
+  if(!menu)return;
+  const items=[{name:menu.mainCourse,type:'main'},...(menu.sideDishes||[]).map(d=>({name:d.name,type:'side'}))].filter(i=>i.name);
+  const itemsHtml=items.map((item,idx)=>{
+    const ex=userRatings[item.name]; const tl=item.type==='main'?'Main Course':'Side Dish';
+    const ratedHtml=ex?`<div class="rated-badge"><i class="fa-solid fa-check"></i> Rated ${ex.rating}★</div>`:'';
+    const starsHtml=[1,2,3,4,5].map(s=>`<span class="star ${ex&&ex.rating>=s?'active':''}" onclick="setRating('${escA(item.name)}',${s})" id="star-${idx}-${s}">★</span>`).join('');
+    const cVal=ex?esc(ex.comment||''):'';
+    return`<div class="rating-item"><div class="rating-item-name">${esc(item.name)}<span class="rating-item-type-badge">${tl}</span></div>${ratedHtml}<div class="star-row" id="stars-${idx}">${starsHtml}</div><textarea class="rating-comment" id="comment-${idx}" placeholder="Comment in Malayalam or English…" rows="2" lang="ml">${cVal}</textarea><div class="comment-hint">മലയാളത്തിൽ കമന്റ് ചെയ്യാം</div></div>`;
+  }).join('');
+  document.getElementById('ratingSection').innerHTML=`<div class="rating-card"><div class="rating-card-header"><i class="fa-solid fa-star"></i><h3>Rate Today's Menu</h3></div>${itemsHtml}<div class="rating-submit-row"><button class="btn-submit-rating" id="ratingSubmitBtn" onclick="submitAllRatings()"><i class="fa-solid fa-paper-plane"></i> Submit Ratings</button></div></div>`;
+  items.forEach(item=>{const ex=userRatings[item.name];if(ex)pendingRatings[item.name]={...ex,type:item.type};});
+}
+
+function setRating(name,rating){
+  const items=currentMenu?[{name:currentMenu.mainCourse,type:'main'},...(currentMenu.sideDishes||[]).map(d=>({name:d.name,type:'side'}))].filter(i=>i.name):[];
+  const idx=items.findIndex(i=>i.name===name); if(idx<0)return;
+  if(!pendingRatings[name]) pendingRatings[name]={type:items[idx].type};
+  pendingRatings[name].rating=rating;
+  for(let s=1;s<=5;s++){const el=document.getElementById(`star-${idx}-${s}`);if(el)el.className='star'+(s<=rating?' active':'');}
+}
+
+async function submitAllRatings(){
+  const items=currentMenu?[{name:currentMenu.mainCourse,type:'main'},...(currentMenu.sideDishes||[]).map(d=>({name:d.name,type:'side'}))].filter(i=>i.name):[];
+  const toSubmit=[];
+  items.forEach((item,idx)=>{
+    const p=pendingRatings[item.name]; const comment=document.getElementById(`comment-${idx}`)?.value?.trim()||'';
+    if(p&&p.rating) toSubmit.push({itemName:item.name,itemType:item.type,rating:p.rating,comment});
+  });
+  if(!toSubmit.length){toast('Please select a star rating first','error');return;}
+  const btn=document.getElementById('ratingSubmitBtn'); btn.disabled=true; btn.innerHTML='<span class="spinner" style="width:14px;height:14px;border-width:2px"></span> Submitting…';
+  try{
+    for(const r of toSubmit) await api({action:'submitRating',token:userToken,...r});
+    toast(`${toSubmit.length} rating${toSubmit.length>1?'s':''} submitted! 🙏`,'success');
+    const ratRes=await api({action:'getMyRatings',token:userToken}); userRatings=ratRes.ratings||{};
+    renderRatingSection(currentMenu);
+  }catch(e){toast('Could not submit. Try again.','error');}
+  btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-paper-plane"></i> Submit Ratings';
+}
+
+// ── SUGGESTIONS ────────────────────────────────────────────────
+async function loadSuggestions(){
+  const sec=document.getElementById('suggestionSection'); if(!sec)return;
+  try{const res=await api({action:'getSuggestions'});renderSuggestions(res.items||[]);}
+  catch(e){renderSuggestions([]);}
+}
+function renderSuggestions(items){
+  const sec=document.getElementById('suggestionSection'); if(!sec)return;
+  const listHtml=items.length?items.map(s=>{
+    const myUp=s.upVoters.includes(userData?.id||'__');
+    const myDn=s.downVoters.includes(userData?.id||'__');
+    const net=s.upVotes-s.downVotes;
+    const netCls=net>0?'sug-net-pos':net<0?'sug-net-neg':'sug-net-zero';
+    const netStr=net>0?'+'+net:String(net);
+    return`<div class="sug-item" id="sugitem-${esc(s.id)}">
+      <span class="sug-type-dot sug-type-${esc(s.type)}"></span>
+      <div class="sug-info"><div class="sug-name">${esc(s.name)}</div><div class="sug-meta">${s.type==='main'?'Main':'Side'} · by ${esc(s.suggestedBy)}</div></div>
+      <div class="sug-vote-row">
+        <span class="sug-net ${netCls}">${netStr}</span>
+        <button class="vote-btn ${myUp?'voted-up':''}" onclick="vote('${esc(s.id)}','${myUp?'remove':'up'}')">👍</button>
+        <span class="vote-count">${s.upVotes}</span>
+        <button class="vote-btn ${myDn?'voted-down':''}" onclick="vote('${esc(s.id)}','${myDn?'remove':'down'}')">👎</button>
+        <span class="vote-count">${s.downVotes}</span>
+      </div>
+    </div>`;
+  }).join(''):'<div class="sug-empty"><i class="fa-solid fa-lightbulb" style="opacity:.3;display:block;font-size:1.5rem;margin-bottom:.4rem"></i>No suggestions yet. Be the first!</div>';
+  sec.innerHTML=`<div class="sug-card">
+    <div class="sug-card-header"><h3><i class="fa-solid fa-lightbulb"></i> Dish Suggestions</h3><span style="font-size:.7rem;opacity:.7">${items.length} idea${items.length!==1?'s':''}</span></div>
+    <div class="sug-add-row">
+      <input type="text" id="sugInput" class="ml" placeholder="Suggest a dish… (Malayalam / English)" lang="ml" onkeydown="if(event.key==='Enter')submitSuggestion()">
+      <select id="sugType"><option value="main">Main</option><option value="side">Side</option></select>
+      <button class="sug-add-btn" onclick="submitSuggestion()"><i class="fa-solid fa-paper-plane"></i> Suggest</button>
+    </div>
+    <div class="sug-list">${listHtml}</div>
+  </div>`;
+}
+async function submitSuggestion(){
+  const name=document.getElementById('sugInput')?.value.trim(); const type=document.getElementById('sugType')?.value||'main';
+  if(!name){toast('Enter a dish name','error');return;}
+  const btn=document.querySelector('.sug-add-btn'); if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner" style="width:13px;height:13px;border-width:2px"></span>';}
+  try{const res=await api({action:'submitSuggestion',token:userToken,name,type}); if(res.success){toast(res.message,'success');loadSuggestions();}else toast(res.message,'error');}
+  catch(e){toast('Network error','error');}
+  if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-paper-plane"></i> Suggest';}
+}
+async function vote(id,voteType){
+  try{const res=await api({action:'voteSuggestion',token:userToken,id,vote:voteType}); if(res.success)loadSuggestions();else toast(res.message,'error');}
+  catch(e){toast('Network error','error');}
+}
+
+// ── HISTORY ───────────────────────────────────────────────────
+async function toggleHistory(){
+  historyOpen=!historyOpen; billOpen=false;
+  document.getElementById('historyPanel').style.display=historyOpen?'block':'none';
+  document.getElementById('billPanel').style.display='none';
+  if(!historyOpen)return;
+  const panel=document.getElementById('historyPanel');
+  panel.innerHTML=`<div class="history-panel"><div class="history-header"><i class="fa-solid fa-clock-rotate-left"></i> My Attendance</div><div id="historyList" style="text-align:center;padding:1.5rem"><span class="spinner"></span></div></div>`;
+  try{
+    const res=await api({action:'getMyAttendance',token:userToken});
+    const list=document.getElementById('historyList');
+    if(!res.records||!res.records.length){list.innerHTML='<div style="padding:1rem;color:var(--muted);font-size:.85rem">No records yet.</div>';return;}
+    list.innerHTML=res.records.map(r=>{
+      const d=new Date(r.date+'T00:00:00');
+      const badgeCls=r.status==='present'?(r.mealType==='nonveg'?'badge-present-nonveg':'badge-present-veg'):'badge-absent';
+      const badgeTxt=r.status==='present'?(r.mealType==='nonveg'?'🍗 Non-Veg':'🥦 Veg'):'✗ Skip';
+      return`<div class="history-item">
+        <div><div class="hi-date">${d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div><div class="hi-day">${d.toLocaleDateString('en-IN',{weekday:'short'})}</div></div>
+        <span class="badge ${badgeCls}">${badgeTxt}</span>
+      </div>`;
+    }).join('');
+  }catch(e){document.getElementById('historyList').innerHTML='<div style="padding:1rem;color:var(--muted)">Could not load.</div>';}
+}
+
+// ── BILLS ─────────────────────────────────────────────────────
+async function checkUserBills(){
+  try{
+    const res=await api({action:'getUserBills',token:userToken});
+    if(res.hasNewBill){
+      document.getElementById('billTicker').className='bill-ticker show';
+    }
+  }catch(e){}
+}
+
+function openBillView(){
+  billOpen=true; historyOpen=false;
+  document.getElementById('historyPanel').style.display='none';
+  document.getElementById('billPanel').style.display='block';
+  loadBillPanel();
+}
+
+async function loadBillPanel(){
+  const panel=document.getElementById('billPanel');
+  panel.innerHTML=`<div class="bill-panel"><div class="bill-panel-header"><i class="fa-solid fa-file-invoice"></i><h3>My Canteen Bills</h3></div><div id="billList" style="padding:1.5rem;text-align:center"><span class="spinner"></span></div></div>`;
+  try{
+    const res=await api({action:'getUserBills',token:userToken});
+    const list=document.getElementById('billList');
+    if(!res.bills||!res.bills.length){list.innerHTML='<div style="color:var(--muted);font-size:.85rem;padding:.5rem">No bills yet.</div>';return;}
+    list.innerHTML='';
+    for(const b of res.bills){
+      if(b.isNew){await api({action:'markBillSeen',token:userToken,id:b.id});}
+      const from=new Date(b.periodFrom+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+      const to=new Date(b.periodTo+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+      list.innerHTML+=`<div class="bill-card ${b.isNew?'bill-new':''}">
+        ${b.isNew?'<div class="new-bill-tag"><i class="fa-solid fa-bell"></i> New Bill</div>':''}
+        <div class="bill-period">${from} – ${to}</div>
+        <div class="bill-amount">₹${parseFloat(b.totalBill).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        <div class="bill-breakdown">
+          <div class="bill-row"><span>Days Present</span><strong>${b.daysPresent}</strong></div>
+          <div class="bill-row"><span>Veg Meals</span><strong>${b.vegMeals}</strong></div>
+          <div class="bill-row"><span>Non-Veg Meals</span><strong>${b.nonVegMeals}</strong></div>
+          <div class="bill-row"><span>Base/day</span><strong>₹${parseFloat(b.baseCostPerMeal).toFixed(2)}</strong></div>
+          ${parseFloat(b.meatCostPerMeal)>0?`<div class="bill-row"><span>Meat cost/day</span><strong>₹${parseFloat(b.meatCostPerMeal).toFixed(2)}</strong></div>`:''}
+        </div>
+      </div>`;
+    }
+    // Hide ticker after viewing
+    document.getElementById('billTicker').className='bill-ticker';
+  }catch(e){document.getElementById('billList').innerHTML='<div style="color:var(--muted)">Could not load bills.</div>';}
+}
+</script>
+
+<div style="position:fixed;bottom:0;left:0;right:0;text-align:center;padding:.5rem 1rem;font-size:.68rem;color:rgba(255,255,255,.4);background:rgba(0,0,0,.2);backdrop-filter:blur(6px);z-index:999;letter-spacing:.03em;pointer-events:none">
+  Developed by <strong style="color:rgba(255,255,255,.6)">CPATSBI IT Team</strong> &nbsp;·&nbsp; Dedicated to <strong style="color:rgba(255,255,255,.6)">RBO</strong> with <span style="color:#f87171">❤️</span>
+</div>
+</body>
+</html>
