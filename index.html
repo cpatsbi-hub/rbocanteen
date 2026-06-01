@@ -674,14 +674,32 @@ async function checkAndShowBillBanner() {
   }
 }
 
+function parseAnyDate(val) {
+  if (!val) return null;
+  const s = String(val).trim();
+  // yyyy-mm-dd  (ISO — most common from Apps Script toDateStr)
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s + 'T00:00:00');
+  // dd-mm-yyyy  or  dd/mm/yyyy
+  const dmy = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+  if (dmy) return new Date(+dmy[3], +dmy[2]-1, +dmy[1]);
+  // mm/dd/yyyy  (US locale fallback)
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (mdy) return new Date(+mdy[3], +mdy[1]-1, +mdy[2]);
+  // Native parse as last resort (handles ISO full timestamps)
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function formatPeriod(from, to) {
-  if (!from || !to) return '';
+  if (!from && !to) return '';
   try {
-    const f = new Date(from + 'T00:00:00');
-    const t = new Date(to   + 'T00:00:00');
+    const f = parseAnyDate(from);
+    const t = parseAnyDate(to);
+    // If parsing failed just show raw strings — never show "Invalid Date"
+    if (!f || !t) return String(from || '') + ' – ' + String(to || '');
     const opts = {day: 'numeric', month: 'short'};
     return f.toLocaleDateString('en-IN', opts) + ' – ' + t.toLocaleDateString('en-IN', opts);
-  } catch(e) { return from + ' – ' + to; }
+  } catch(e) { return String(from || '') + ' – ' + String(to || ''); }
 }
 
 function openBillModal() {
